@@ -246,6 +246,7 @@ a_init1
         jsr sysjmp
 
         #setobj8 this,width,22 
+        #setobj16 this,tonclick,onclick
 
         ; use default open msg to
         ; start with
@@ -1249,7 +1250,62 @@ redraw
         rts
 
 ; ------------------------------------
+ptr2    = $fd ; $fe
+onclick
+        ; save pointer to link text to ptr
+        #stxy ptr
 
+        ; check for 'fn:' link first
+        ldy #0
+        lda (ptr), y
+        cmp #"f"
+        bne endclick
+        iny
+        lda (ptr), y
+        cmp #"n"
+        bne endclick
+        iny
+        lda (ptr), y
+        cmp #":"
+        bne endclick
+        ; we have a file name (fn:) link
+        ; allocate page for new file reference
+        lda #mapapp
+        ldx #1
+        jsr pgalloc
+        sty frefpg
+        sty ptr2+1          ; save new file ref page to ptr2 high byte
+        ; copy current open file reference
+        lda #>ofrcopy
+        jsr memcpy
+
+        ; load filename offset to ptr2 low byte (high byte of new file ref loaded above)
+        lda #frefname
+        sta ptr2
+
+        ; move to start of filename
+        inc ptr
+        inc ptr
+        inc ptr
+
+        ; copy filename
+        ldy #0
+clicklp lda(ptr),y
+        cmp #$03    ; end of link byte
+        beq endfnm
+        sta(ptr2),y
+        iny
+        jmp clicklp
+
+endfnm  lda #0
+        sta(ptr2),y ; null-terminate filename in new file ref
+        lda #1
+        sta popen
+        jsr m_hmem
+endclick
+        rts
+
+; ------------------------------------
 welcome
 
 .byte $0d,$f6,$f1
