@@ -129,7 +129,14 @@ pascii
 ; 0 = not petscii
 
 ppetscii
-        .byte mnu_sel 
+        .byte mnu_sel
+
+; flag to show if the reload menu
+; option is available after
+; a file is opened
+
+preload
+        .byte mnu_dis
 
 ; work pointer
 ptr     = $fb;$fc
@@ -419,12 +426,17 @@ a_mcmd
 
 mnuenq
         txa
-        #switch 3
-        .text "apw"
+        #switch 4
+        .text "rapw"
+        .rta m_relchk
         .rta m_ascchk
         .rta m_petchk
-        .rta m_wrapchk
+        .rta m_wrpchk
         lda #0
+        rts
+
+m_relchk
+        lda preload
         rts
 
 m_ascchk
@@ -435,26 +447,27 @@ m_petchk
         lda ppetscii
         rts
 
-m_wrapchk
-
+m_wrpchk
         lda pwrap
         rts
 
 mnucmd
         txa
-        #switch 6
+        #switch 7
         .text "!"
         .text "o"
         .text "c"
         .text "p"
         .text "a"
         .text "w"
+        .text "r"
         .rta quitapp
         .rta m_openfd
         .rta m_close
         .rta m_petscii
         .rta m_ascii
         .rta m_wrap
+        .rta m_reload
         
         sec
         rts
@@ -967,6 +980,185 @@ done
 
         .bend
 
+
+; ------------------------------------
+m_reload
+        .block
+
+        ; close any open file
+
+        jsr m_close
+
+        ; load the last open file
+
+        ldy #>ofrcopy
+        ldx #0
+        lda #ff_r.ff_s
+        jsr fopen
+
+        ; was there an error?
+
+        bcs err
+        jmp noerr
+err
+        jmp error
+
+noerr
+        ; get blocks from file
+
+        #stxy ptr
+        ldy #frefblks
+        lda (ptr),y
+        sta bsize+1
+        sta psize
+
+        tax 
+        lda #mapapp
+        jsr pgalloc
+
+        ; no errors allocating?
+
+        bcc loadf0
+
+        ; otherwise show a message
+        ; that there is not enough
+        ; memory
+
+        #ldxy err1
+        #stxy txtbuf
+
+        jmp close
+
+loadf0
+        ; save our allocated
+        ; memory for later
+        
+        sty txtbuf+1
+        sty baddr+1
+        sty ppage
+
+        ; make sure we are on
+        ; zero page boundry for
+        ; file contents
+
+        lda #0
+        sta txtbuf
+
+        ; read the file contents
+        ; into our text buffer
+
+        ldy #>ofrcopy
+        ldx #0
+
+        jsr fread
+baddr   .word $00
+bsize   .word $ff
+
+        ; close the file
+
+        ldy #>ofrcopy
+        ldx #0
+        jsr fclose
+
+        ; make sure that the pointer
+        ; for open files is using
+        ; our loaded file
+
+        ldy #>ofrcopy
+        ldx #0
+        #stxy opnfileref
+
+        ; set flag that we have
+        ; loaded a file
+
+        lda #1
+        sta pload
+
+        ; set reload menu option on
+        
+        lda #0
+        sta preload
+
+        #ldxy tkenv
+        jsr settkenv
+
+        ; get reference to the
+        ; scroll widget
+
+        #storeget widgets,0
+        jsr ptrthis
+
+        ; reset the vertical scroll
+        ; offset
+        
+        ldy #setoff_
+        jsr getmethod
+        #ldxy 0
+        sec
+        jsr sysjmp
+
+        jsr thisdirt
+        jsr mkdirt
+
+        ; get the reference to 
+        ; the tktext widget
+
+        #storeget widgets,1
+        jsr ptrthis
+
+        ; prepare the pointer 
+        ; reference for the function
+        ; to set a string pointer
+
+        ldy #setstrp_
+        jsr getmethod
+
+        ; call the method to set the 
+        ; string pointer
+
+        #rdxy txtbuf
+        jsr sysjmp
+
+        ; check if the dirty
+
+        jsr thisdirt
+
+        ; set the toolkit environment
+        ; dirty flag to force a redraw
+
+        jsr mkdirt
+
+        lda #0
+        sta popen
+
+        rts
+
+error
+        ; file open error
+
+        #ldxy err2
+        #stxy txtbuf
+
+close
+        ; clear the file ref
+
+        ldy #0
+        ldx #0
+        #stxy opnfileref
+
+        ; close the file
+
+        ldy #>ofrcopy
+        ldx #0
+        jsr fclose
+
+        lda #0
+        sta pload
+
+        rts
+
+        .bend
+
 ; ------------------------------------
 a_quit
         .block
@@ -1033,6 +1225,7 @@ openjob
 
         .bend
 
+; load file from file pointer
 ; ------------------------------------
 loadf
         .block
@@ -1045,7 +1238,7 @@ loadf
         ; no, go ahead and load
         ; the file
 
-        beq noload
+        beq goload
 
         ; yes, free up memory from 
         ; the last loaded file first
@@ -1054,7 +1247,7 @@ loadf
         ldx psize
         jsr pgfree
 
-noload
+goload
         ; copy page aligned file
         ; reference to app memory
         ; and free memory
@@ -1074,6 +1267,7 @@ noload
         ; file open we saved
         ; earlier
 
+goload1
         ldy #>ofrcopy
         ldx #0
         lda #ff_r.ff_s
@@ -1152,6 +1346,11 @@ bsize   .word $ff
 
         lda #1
         sta pload
+
+        ; set reload menu option on
+        
+        lda #0
+        sta preload
 
         rts
 
@@ -1330,7 +1529,7 @@ setname jmp 3
 pathadd jmp 6
 gopath  jmp 18
 
-* = $1000
+* = $1100
 
 ; appfilref copy
 

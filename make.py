@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 """
     Standalone make script written
     in Python. There are no other packages
@@ -8,13 +10,13 @@
 
     USAGE
 
-    make.py [final]
+    make.py [--final]
 
     The script can be run on its own, in which case it will create
     a developer build. 
 
     There is one optional argument for `make.py`:
-    - `final` will prepare the `msg.txt` and `about.txt` for the final
+    - `--final` will prepare the `msg.txt` and `about.txt` for the final
       release. Leaving it blank will provide helpful information for
       the user to give to the developer.
 
@@ -26,7 +28,7 @@ import datetime
 import subprocess
 import sys
 
-VERSION = "1.0"
+VERSION = "1.1"
 MAKE_OPTION = "none"
 AUTHOR = "Paul Hocker"
 
@@ -48,23 +50,17 @@ with open(buildnumber_file, "w", encoding=None) as f:
 
 # developer build settings
 
-MSG = f"Build {buildnumber} on {builddate}"
-ABOUT = f"TextView+\n{VERSION}\n2024\n{buildnumber}\n"
+MSG = f"v{VERSION} Build {buildnumber} on {builddate}"
+ABOUT = f"TextView+\n{VERSION}\n2025\n{buildnumber}\n"
 
 print(f"Build number {buildnumber}")
 
-if len(sys.argv) > 1:
-
-    MAKE_OPTION = sys.argv[1]
-
-# make about and msg files for final build
-
-if MAKE_OPTION == 'final':
+if "--final" in sys.argv:
 
     print("Updating ABOUT and MSG for final build")
 
     MSG = " If you don't like to read, you haven't  found the right book! - J.K Rowling"
-    ABOUT = f"TextView+\n{VERSION}\n2024\n{AUTHOR}\n"
+    ABOUT = f"TextView+\n{VERSION}\n2025\n{AUTHOR}\n"
 
 message_file = "msg.txt"
 with open(message_file, "w", encoding=None) as f:

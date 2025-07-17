@@ -3,7 +3,9 @@ Open:2oo
 Close:2cc
 *
 Go Home:6h!
-View;d
+View;f
+Reload:2rr
+*
 PETSCII:2pp
 ASCII:2aa
 *
