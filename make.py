@@ -28,7 +28,7 @@ import datetime
 import subprocess
 import sys
 
-VERSION = "1.1"
+VERSION = "1.2-dev"
 MAKE_OPTION = "none"
 AUTHOR = "Paul Hocker"
 
