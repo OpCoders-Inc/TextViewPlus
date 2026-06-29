@@ -14,4 +14,12 @@ os
 temp
 test
 .source.txt
+.tmpx
+.vicedebug
+build.lst
+.build
+about.txt
+msg.txt
+AGENTS.md
+TECHNICAL.md
 

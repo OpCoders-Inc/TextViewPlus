@@ -83,12 +83,8 @@ txtbuf
         .byte 0,0
 
 ; open file reference
-frefpg
-        .byte 0
 
-; flag to tell us if a file
-; has already been loaded
-pload
+frefpg
         .byte 0
 
 ; where is the starting page of
@@ -131,13 +127,6 @@ pascii
 ppetscii
         .byte mnu_sel
 
-; flag to show if the reload menu
-; option is available after
-; a file is opened
-
-preload
-        .byte mnu_dis
-
 ; work pointer
 ptr     = $fb;$fc
 
@@ -148,10 +137,6 @@ a_init
         #ldxy extern
         jsr initextern
 
-; config root draw context
-; 1K color memory and 1K text memory
-
-a_init1
         lda #mapapp
         ldx #4
         jsr pgalloc
@@ -162,29 +147,34 @@ a_init1
         jsr pgalloc
         sty drawctx+d_origin+1
 
-; allocating memory for
-; the toolkit widgets
-;
-; TKVIEW      39
-; TKSCROLL    46
-; TKSBAR      65
-; TKSBAR      65
-; TKTEXT      52
-;
-;            267
-;
-; OBJS 3*5    15
-;
-; TOTAL      282
-;
-; 282 % 256 = 2 page
-
         lda #mapapp
         ldx #2
         jsr pgalloc
         sty tkenv+te_mpool
 
-; load shared libs
+        #ldxy tkenv
+        jsr settkenv
+
+        ldx #tkscroll
+        jsr classptr
+        jsr tknew
+
+        #stxy tkenv+te_rview
+        #storeset widgets,0
+
+        ldy #init_
+        jsr getmethod
+        jsr sysjmp
+
+        #setobj16 this,width,screen_cols
+        #setobj16 this,height,screen_rows
+
+        #setobj8 this,offtop,1
+        #setobj8 this,offbot,1
+        #setobj8 this,offleft,0
+        #setobj8 this,offrght,0
+
+        #setflag this,dflags,df_opaqu
 
         ldx #"p"
         ldy #"a"
@@ -195,88 +185,36 @@ a_init1
         sta pathadd+2
         sta gopath+2
 
-; load TKText
-
         ldx #tkview
         jsr classptr
-
         lda #0
         jsr loadclass
         #storeset classes,0
-
-; creating view
-
-        #ldxy tkenv
-        jsr settkenv
-
-        ldx #tkview
-        jsr classptr
-        jsr tknew
-
-        #stxy tkenv+te_rview
-
-        ldy #init_
-        jsr getmethod
-        jsr sysjmp
-
-        #setflag this,dflags,df_opaqu
-
-; create the tkscroll
-
-        ldx #tkscroll
-        jsr classptr
-        jsr tknew
-
-        #storeset widgets,0
-
-        ldy #init_
-        jsr getmethod
-        jsr sysjmp
-
-        #setobj8 this,offtop,1
-        #setobj8 this,offbot,1
-        #setobj8 this,offleft,0
-        #setobj8 this,offrght,0
-
-        #rdxy tkenv+te_rview
-        jsr appendto
-
-; create the tktext
 
         #storeget classes,0
         jsr tknew
 
         #storeset widgets,1
 
-        ldy #init_ 
+        ldy #init_
         jsr getmethod
         jsr sysjmp
 
-        #setobj8 this,width,22 
+        #setobj8 this,width,22
         #setobj16 this,tonclick,onclick
-
-        ; use default open msg to
-        ; start with
 
         #ldxy welcome
         #stxy txtbuf
 
-        ldy #setstrp_ 
-        jsr getmethod
-        ldx txtbuf
-        ldy txtbuf+1
-        jsr sysjmp 
+        #rdxy txtbuf
+        jsr set_text
 
-        ; make tktext first key
-        ; calling
+        ; first responder
 
         ldy #setfirst_
         jsr getmethod
-        sec 
+        sec
         jsr sysjmp
-        
-        ; set tktext as tkscroll
-        ; content
 
         #storeget widgets,0
         jsr ptrthis
@@ -287,67 +225,29 @@ a_init1
         #storeget widgets,1
         jsr sysjmp
 
-        ldy #setbar_ 
+        ldy #setbar_
         jsr getmethod
 
-        ldy #1 ; enable vert bar
-        ldx #0 ; enable horiz bar
+        ldy #1
+        ldx #0
         jsr sysjmp
 
-        ; default is to show sample
-
-        #ldxy welcome
-        #stxy txtbuf
-
-        ; move appfileref
-        ; to local storage
-
-        lda appfileref+1
-        ldy #>afrcopy
-        jsr memcpy
-
-        ; free memory that the
-        ; appfileref is using
-
-        ldy appfileref+1
-        ldx #1
-        jsr pgfree
-
-        ; update the location
-        ; of appfileref
-
-        ldy #>afrcopy
-        ldx #0
-        #stxy appfileref
-
-        ; check to see if we
-        ; opened the app from the
-        ; file manager and load
-        
         jsr loadapp
 
-a_init99
-
-        ; get the reference to 
-        ; the tktext widget
+        #rdxy txtbuf
+        jsr set_text
 
         #storeget widgets,1
         jsr ptrthis
+        jsr thisdirt
 
-        ; prepare the pointer 
-        ; reference for the function
-        ; to set a string pointer
+        #storeget widgets,0
+        jsr ptrthis
+        jsr thisdirt
 
-        ldy #setstrp_
-        jsr getmethod
-
-        ; call the method to set the 
-        ; string pointer
-
-        #rdxy txtbuf
-        jsr sysjmp
-
-        ; push main screen layer
+        lda tkenv+te_flags
+        ora #tf_dirty
+        sta tkenv+te_flags
 
         #ldxy layer
         jsr layerpush
@@ -355,14 +255,22 @@ a_init99
         ldx layer+slindx
         jsr markredraw
 
+        #ldxy tkenv
+        jsr tkupdate
+        ldy tkenv+te_posy
+        ldx tkenv+te_posx
+        jsr ctx2scr
+
         rts
+
+        .bend
 
 ; A -> Class Index
 ; RegPtr -> SuperClass Ptr
 ; RegPtr <- Loaded Class Ptr
 ; ptr <- Ready to be loaded
 
-loadclass 
+loadclass
         stx class
         sty class+1
         pha
@@ -385,10 +293,7 @@ loadclass
 
         jsr pathadd
 
-; LoadClass common ending.
-
 lc_end
-
          pla
          jsr cnames
          lda ptr+1
@@ -401,9 +306,36 @@ lc_end
          ldx class
          ldy class+1
 
-         rts         
+         rts
 
-        .bend
+; ------------------------------------
+set_text
+        txa
+        pha
+        tya
+        pha
+        #storeget widgets,1
+        jsr ptrthis
+        ldy #setstrp_
+        jsr getmethod
+        pla
+        tay
+        pla
+        tax
+        jsr sysjmp
+        rts
+
+; ------------------------------------
+free_file_buffer
+        lda ppage
+        beq skip
+        ldy ppage
+        ldx psize
+        jsr pgfree
+        lda #0
+        sta ppage
+        sta psize
+skip    rts
 
 ; ------------------------------------
 a_mcmd
@@ -436,7 +368,11 @@ mnuenq
         rts
 
 m_relchk
-        lda preload
+        lda ppage
+        beq dis
+        lda #0
+        rts
+dis     lda #mnu_dis
         rts
 
 m_ascchk
@@ -509,22 +445,13 @@ a_thaw
         ; get the reference to 
         ; the tktext widget
 
-        #storeget widgets,1
-        jsr ptrthis
-
-        ; prepare the pointer 
-        ; reference for the function
-        ; to set a string pointer
-
-        ldy #setstrp_
-        jsr getmethod
-
-        ; call the method to set the 
-        ; string pointer
+        ; get the reference to 
+        ; the tktext widget
 
         #rdxy txtbuf
-        jsr sysjmp
+        jsr set_text
 
+        ; check if the dirty
         ; check if the dirty
 
         jsr thisdirt
@@ -588,34 +515,15 @@ l_prnt
 m_close
         .block
 
-        ; is there a file loaded?
-        
-        lda pload
-
-        ; no, reset text view
-
-        beq m_close1
-
         ; free used space
 
-        ldy ppage
-        ldx psize
-        jsr pgfree
-
-        ; free file ref space used
-
-        ldy frefpg
-        ldx #1
-        jsr pgfree
-
-m_close1
+        jsr free_file_buffer
 
         ; clear our flags and temp
         ; space for the next time
         ; we want to load a file
 
         lda #0
-        sta pload
         sta ppage
         sta psize
 
@@ -625,22 +533,9 @@ m_close1
         ; get the reference to 
         ; the tktext
 
-        #storeget widgets,1
-        jsr ptrthis
-
-        ; prepare the pointer 
-        ; reference for the function
-        ; to set a string pointer
-
-        ldy #setstrp_
-        jsr getmethod
-
-        ; call the method to set the 
-        ; string pointer 
-        
         #ldxy welcome
         #stxy txtbuf
-        jsr sysjmp
+        jsr set_text
 
         ; check if the label is dirty
 
@@ -661,6 +556,9 @@ m_fopn
         ; file reference is stored
 
         sty frefpg
+
+        lda #mapapp
+        sta memmap,y
 
         ; set flag so that when hmem
         ; callback comes we know that
@@ -737,24 +635,10 @@ hmem2
         jsr thisdirt
         jsr mkdirt
 
-        ; get the reference to 
-        ; the tktext widget
-
-        #storeget widgets,1
-        jsr ptrthis
-
-        ; prepare the pointer 
-        ; reference for the function
-        ; to set a string pointer
-
-        ldy #setstrp_
-        jsr getmethod
-
-        ; call the method to set the 
-        ; string pointer
+        ; set the text
 
         #rdxy txtbuf
-        jsr sysjmp
+        jsr set_text
 
         ; check if the dirty
 
@@ -1068,17 +952,6 @@ bsize   .word $ff
         ldx #0
         #stxy opnfileref
 
-        ; set flag that we have
-        ; loaded a file
-
-        lda #1
-        sta pload
-
-        ; set reload menu option on
-        
-        lda #0
-        sta preload
-
         #ldxy tkenv
         jsr settkenv
 
@@ -1100,24 +973,10 @@ bsize   .word $ff
         jsr thisdirt
         jsr mkdirt
 
-        ; get the reference to 
-        ; the tktext widget
-
-        #storeget widgets,1
-        jsr ptrthis
-
-        ; prepare the pointer 
-        ; reference for the function
-        ; to set a string pointer
-
-        ldy #setstrp_
-        jsr getmethod
-
-        ; call the method to set the 
-        ; string pointer
+        ; set the text
 
         #rdxy txtbuf
-        jsr sysjmp
+        jsr set_text
 
         ; check if the dirty
 
@@ -1152,9 +1011,6 @@ close
         ldx #0
         jsr fclose
 
-        lda #0
-        sta pload
-
         rts
 
         .bend
@@ -1165,23 +1021,8 @@ a_quit
 
         ; clear memory here
 
-        lda pload
+        jsr free_file_buffer
 
-        ; no, reset text view
-
-        beq end
-
-        ; free used space
-
-        ldy ppage
-        ldx psize
-        jsr pgfree
-
-        ; free file ref space used
-
-        ldy frefpg
-        ldx #1
-        jsr pgfree
 end        
         rts
 
@@ -1230,22 +1071,9 @@ openjob
 loadf
         .block
 
-        ; was a text file already
-        ; loaded in memory?
-        
-        lda pload
+        ; free any existing file data first
 
-        ; no, go ahead and load
-        ; the file
-
-        beq goload
-
-        ; yes, free up memory from 
-        ; the last loaded file first
-
-        ldy ppage
-        ldx psize
-        jsr pgfree
+        jsr free_file_buffer
 
 goload
         ; copy page aligned file
@@ -1341,16 +1169,6 @@ bsize   .word $ff
         ldx #0
         #stxy opnfileref
 
-        ; set flag that we have
-        ; loaded a file
-
-        lda #1
-        sta pload
-
-        ; set reload menu option on
-        
-        lda #0
-        sta preload
 
         rts
 
@@ -1372,9 +1190,6 @@ close
         ldy #>ofrcopy
         ldx #0
         jsr fclose
-
-        lda #0
-        sta pload
 
         rts
 
@@ -1407,8 +1222,10 @@ load
         ; to the file information
         ; and load it
 
-        lda opnappmdhi
-        sta frefpg
+        ldy opnappmdhi
+        sty frefpg
+        lda #mapapp
+        sta memmap,y
 
         jsr loadf
 
