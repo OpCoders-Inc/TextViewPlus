@@ -864,97 +864,23 @@ m_reload
 
         jsr m_close
 
-        ; load the last open file
-
-        ldy #>ofrcopy
-        ldx #0
-        lda #ff_r.ff_s
-        jsr fopen
-
-        ; was there an error?
-
-        bcs err
-        jmp noerr
-err
-        jmp error
-
-noerr
-        ; get blocks from file
-
-        #stxy ptr
-        ldy #frefblks
-        lda (ptr),y
-        sta bsize+1
-        sta psize
-
-        tax 
-        lda #mapapp
-        jsr pgalloc
-
-        ; no errors allocating?
-
-        bcc loadf0
-
-        ; otherwise show a message
-        ; that there is not enough
-        ; memory
-
-        #ldxy err1
-        #stxy txtbuf
-
-        jmp close
-
-loadf0
-        ; save our allocated
-        ; memory for later
-        
-        sty txtbuf+1
-        sty baddr+1
-        sty ppage
-
-        ; make sure we are on
-        ; zero page boundry for
-        ; file contents
+        ; signal that ofrcopy is already populated
 
         lda #0
-        sta txtbuf
+        sta frefpg
 
-        ; read the file contents
-        ; into our text buffer
-
-        ldy #>ofrcopy
-        ldx #0
-
-        jsr fread
-baddr   .word $00
-bsize   .word $ff
-
-        ; close the file
-
-        ldy #>ofrcopy
-        ldx #0
-        jsr fclose
-
-        ; make sure that the pointer
-        ; for open files is using
-        ; our loaded file
-
-        ldy #>ofrcopy
-        ldx #0
-        #stxy opnfileref
+        jsr loadf
 
         #ldxy tkenv
         jsr settkenv
 
-        ; get reference to the
-        ; scroll widget
+        ; get reference to the scroll widget
 
         #storeget widgets,0
         jsr ptrthis
 
-        ; reset the vertical scroll
-        ; offset
-        
+        ; reset the vertical scroll offset
+
         ldy #setoff_
         jsr getmethod
         #ldxy 0
@@ -969,38 +895,8 @@ bsize   .word $ff
         #rdxy txtbuf
         jsr set_text
 
-        ; check if the dirty
-
         jsr thisdirt
-
-        ; set the toolkit environment
-        ; dirty flag to force a redraw
-
         jsr mkdirt
-
-        lda #0
-        sta popen
-
-        rts
-
-error
-        ; file open error
-
-        #ldxy err2
-        #stxy txtbuf
-
-close
-        ; clear the file ref
-
-        ldy #0
-        ldx #0
-        #stxy opnfileref
-
-        ; close the file
-
-        ldy #>ofrcopy
-        ldx #0
-        jsr fclose
 
         rts
 
@@ -1051,6 +947,9 @@ loadf
         ; free any existing file data first
 
         jsr free_file_buffer
+
+        lda frefpg
+        beq goload1
 
 goload
         ; copy page aligned file
