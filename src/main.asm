@@ -557,9 +557,6 @@ m_fopn
 
         sty frefpg
 
-        lda #mapapp
-        sta memmap,y
-
         ; set flag so that when hmem
         ; callback comes we know that
         ; it was initiatied from the
@@ -1224,8 +1221,6 @@ load
 
         ldy opnappmdhi
         sty frefpg
-        lda #mapapp
-        sta memmap,y
 
         jsr loadf
 
@@ -1347,12 +1342,6 @@ pathadd jmp 6
 gopath  jmp 18
 
 * = $1100
-
-; appfilref copy
-
-afrcopy
-
-.repeat 256, $aa
 
 ; openfileref copy
 
