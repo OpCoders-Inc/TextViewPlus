@@ -53,9 +53,6 @@ tkenv
 ; ------------------------------------
 ; user interface space
 
-views
-        .word 0 ;root
-
 widgets
         .word 0,0
 
@@ -646,9 +643,6 @@ hmem2
 
         jsr mkdirt
 
-        lda #0
-        sta popen
-
 hmem99
         rts
 
@@ -1021,20 +1015,6 @@ a_quit
         jsr free_file_buffer
 
 end        
-        rts
-
-        .bend
-
-; ------------------------------------
-xytoax
-        .block
-
-        txa
-        pha
-        tya
-        tax
-        pla
-
         rts
 
         .bend
