@@ -166,10 +166,12 @@ a_init
         #setobj16 this,width,screen_cols
         #setobj16 this,height,screen_rows
 
-        #setobj8 this,offtop,1
-        #setobj8 this,offbot,1
+        #setobj8 this,offtop,0
+        #setobj8 this,offbot,0
         #setobj8 this,offleft,0
         #setobj8 this,offrght,0
+
+        jsr m_rflgs
 
         #setflag this,dflags,df_opaqu
 
@@ -338,15 +340,17 @@ skip    rts
 a_mcmd
         .block
 
-        #switch 5
+        #switch 6
         .byte mc_menq
         .byte mc_mnu
         .byte mc_fopn
+        .byte mc_rflg
         .byte mc_hmem
         .byte mc_memw
         .rta mnuenq
         .rta mnucmd
         .rta m_fopn
+        .rta m_rflgs
         .rta m_hmem
         .rta m_memw
 
@@ -658,6 +662,38 @@ m_memw
         rts
 
         .bend
+
+; ------------------------------------
+; screen redraw flags changed
+m_rflgs
+        #ldxy tkenv
+        jsr settkenv
+
+        #rdxy tkenv+te_rview
+        jsr ptrthis
+
+        ldy #offtop
+
+        lda redrawflgs
+        and #rmenubar
+        beq *+4
+        lda #1
+
+        sta (this),y
+
+        ldy #offbot
+
+        lda redrawflgs
+        and #rstatbar
+        beq *+4
+        lda #1
+
+        sta (this),y
+
+        #setobj8 this,mflags,mf_resiz
+
+        jsr thisdirt
+        jmp mkdirt
 
 ; ------------------------------------
 ; show ascii on tktext
