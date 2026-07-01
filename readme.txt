@@ -9,6 +9,7 @@ History
 ----------------
 - fixed crash when selecting Go Home
 - improved reliability with C64 OS 1.09
+- responsive margins: view adjusts when menu bar / status bar toggled
 - various code cleanups and optimizations
 
 1.1 (2025-06-12)
