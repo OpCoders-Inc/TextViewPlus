@@ -134,6 +134,16 @@ a_init
         #ldxy extern
         jsr initextern
 
+        ; protect file ref page from pgalloc
+
+        lda opnappmcmd
+        cmp #mc_fopn
+        bne no_fref
+        ldy opnappmdhi
+        lda #mapapp
+        sta memmap,y
+no_fref
+
         lda #mapapp
         ldx #4
         jsr pgalloc
@@ -528,6 +538,14 @@ m_close
         sta ppage
         sta psize
 
+        ; clear file refs so
+        ; system doesn't restore them
+
+        ldy #0
+        ldx #0
+        #stxy opnfileref
+        #stxy appfileref
+
         #ldxy tkenv
         jsr settkenv
 
@@ -557,6 +575,8 @@ m_fopn
         ; file reference is stored
 
         sty frefpg
+        lda #mapapp
+        sta memmap,y
 
         ; set flag so that when hmem
         ; callback comes we know that
@@ -942,9 +962,16 @@ m_reload
 a_quit
         .block
 
-        ; clear memory here
+        ; clear file refs so
+        ; system doesn't restore them
 
-        jsr free_file_buffer
+        ldy #0
+        ldx #0
+        #stxy opnfileref
+        #stxy appfileref
+
+        ; system handles cleanup of
+        ; mapapp pages automatically
 
 end        
         rts
@@ -990,17 +1017,13 @@ loadf
 goload
         ; copy page aligned file
         ; reference to app memory
-        ; and free memory
 
         lda frefpg
         ldy #>ofrcopy
         jsr memcpy
 
-        ; free file ref space
-
-        ldy frefpg
-        ldx #1
-        jsr pgfree
+        ; don't free source page --
+        ; system handles maptemp cleanup
 
         ; use our page aligned 
         ; reference from the 
@@ -1136,6 +1159,8 @@ load
 
         ldy opnappmdhi
         sty frefpg
+        lda #mapapp
+        sta memmap,y
 
         jsr loadf
 
