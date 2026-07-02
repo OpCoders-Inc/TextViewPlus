@@ -538,14 +538,6 @@ m_close
         sta ppage
         sta psize
 
-        ; clear file refs so
-        ; system doesn't restore them
-
-        ldy #0
-        ldx #0
-        #stxy opnfileref
-        #stxy appfileref
-
         #ldxy tkenv
         jsr settkenv
 
@@ -1165,11 +1157,17 @@ load
         lda #mapapp
         sta memmap,y
 
-        ; copy to ofrcopy immediately
+        ; copy to ofrcopy, then free the page
 
         lda frefpg
+        pha
         ldy #>ofrcopy
         jsr memcpy
+        pla
+        tay
+        ldx #1
+        jsr pgfree
+
         lda #0
         sta frefpg        ; signal loadf: skip copy+free
 
