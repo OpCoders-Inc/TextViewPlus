@@ -571,6 +571,15 @@ m_close
 m_fopn
         .block
 
+        ; free previous file ref
+
+        lda frefpg
+        beq save_new
+        tay
+        ldx #1
+        jsr pgfree
+
+save_new
         ; save the page where the 
         ; file reference is stored
 
@@ -1157,6 +1166,13 @@ load
         ; to the file information
         ; and load it
 
+        lda frefpg
+        beq loadcont
+        tay
+        ldx #1
+        jsr pgfree
+
+loadcont
         ldy opnappmdhi
         sty frefpg
         lda #mapapp
