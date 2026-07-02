@@ -571,15 +571,6 @@ m_close
 m_fopn
         .block
 
-        ; free previous file ref
-
-        lda frefpg
-        beq save_new
-        tay
-        ldx #1
-        jsr pgfree
-
-save_new
         ; save the page where the 
         ; file reference is stored
 
@@ -1031,8 +1022,11 @@ goload
         ldy #>ofrcopy
         jsr memcpy
 
-        ; don't free source page --
-        ; system handles maptemp cleanup
+        ; free file ref space
+
+        ldy frefpg
+        ldx #1
+        jsr pgfree
 
         ; use our page aligned 
         ; reference from the 
@@ -1166,17 +1160,18 @@ load
         ; to the file information
         ; and load it
 
-        lda frefpg
-        beq loadcont
-        tay
-        ldx #1
-        jsr pgfree
-
-loadcont
         ldy opnappmdhi
         sty frefpg
         lda #mapapp
         sta memmap,y
+
+        ; copy to ofrcopy immediately
+
+        lda frefpg
+        ldy #>ofrcopy
+        jsr memcpy
+        lda #0
+        sta frefpg        ; signal loadf: skip copy+free
 
         jsr loadf
 
