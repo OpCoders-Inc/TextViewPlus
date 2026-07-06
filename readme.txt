@@ -5,6 +5,11 @@ TextView+ is an Application for C64 OS for viewing text files in PETSCII, ASCII 
 History
 =======
 
+1.2.1 (2026-07-06)
+----------------
+- fixed scrollbar not responding on initial load
+- fixed File Manager lockup when returning via Go Home
+
 1.2 (2026-06-28)
 ----------------
 - fixed crash when selecting Go Home

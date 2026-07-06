@@ -176,12 +176,10 @@ no_fref
         #setobj16 this,width,screen_cols
         #setobj16 this,height,screen_rows
 
-        #setobj8 this,offtop,0
-        #setobj8 this,offbot,0
+        #setobj8 this,offtop,1
+        #setobj8 this,offbot,1
         #setobj8 this,offleft,0
         #setobj8 this,offrght,0
-
-        jsr m_rflgs
 
         #setflag this,dflags,df_opaqu
 
@@ -263,6 +261,8 @@ no_fref
 
         ldx layer+slindx
         jsr markredraw
+
+        jsr m_rflgs
 
         #ldxy tkenv
         jsr tkupdate
