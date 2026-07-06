@@ -9,6 +9,7 @@ History
 ----------------
 - fixed scrollbar not responding on initial load
 - fixed File Manager lockup when returning via Go Home
+- fixed Go Home freeze with large files
 
 1.2 (2026-06-28)
 ----------------

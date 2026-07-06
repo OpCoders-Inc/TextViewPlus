@@ -954,6 +954,10 @@ m_reload
 a_quit
         .block
 
+        ; free any loaded file data
+
+        jsr free_file_buffer
+
         ; clear file refs so
         ; system doesn't restore them
 
@@ -961,9 +965,6 @@ a_quit
         ldx #0
         #stxy opnfileref
         #stxy appfileref
-
-        ; system handles cleanup of
-        ; mapapp pages automatically
 
 end        
         rts
