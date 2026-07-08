@@ -173,15 +173,13 @@ no_fref
         jsr getmethod
         jsr sysjmp
 
-        #setobj16 this,width,screen_cols
-        #setobj16 this,height,screen_rows
-
         #setobj8 this,offtop,1
         #setobj8 this,offbot,1
         #setobj8 this,offleft,0
         #setobj8 this,offrght,0
 
-        #setflag this,dflags,df_opaqu
+        #setobj16 this,width,screen_cols
+        #setobj16 this,height,screen_rows
 
         ldx #"p"
         ldy #"a"
@@ -259,9 +257,6 @@ no_fref
         #ldxy layer
         jsr layerpush
 
-        ldx layer+slindx
-        jsr markredraw
-
         jsr m_rflgs
 
         #ldxy tkenv
@@ -269,6 +264,9 @@ no_fref
         ldy tkenv+te_posy
         ldx tkenv+te_posx
         jsr ctx2scr
+
+        ldx layer+slindx
+        jsr markredraw
 
         rts
 
@@ -456,13 +454,9 @@ a_thaw
         ; get the reference to 
         ; the tktext widget
 
-        ; get the reference to 
-        ; the tktext widget
-
         #rdxy txtbuf
         jsr set_text
 
-        ; check if the dirty
         ; check if the dirty
 
         jsr thisdirt
@@ -773,7 +767,7 @@ m_petscii
         ldy #setstrf_
         jsr getmethod
 
-        ; set to ascii
+        ; set to petscii
 
         lda #mnu_sel
         sta ppetscii
@@ -839,7 +833,7 @@ wrap
         jsr getmethod
 
         ; set the tktext flag
-        ; to unwrap text
+        ; to wrap text
 
         lda #mnu_sel
         sta pwrap
