@@ -1015,11 +1015,14 @@ goload
         ldy #>ofrcopy
         jsr memcpy
 
-        ; free file ref space
+        ; system owns the file ref page (mc_fopn / onclick);
+        ; pgfree here deallocates it while the system's
+        ; callback chain still references it, causing Go Home
+        ; freeze -- the page is reclaimed when the app quits
+        ; (loadapp handles its own pgfree separately)
 
-        ldy frefpg
-        ldx #1
-        jsr pgfree
+        lda #0
+        sta frefpg
 
         ; use our page aligned 
         ; reference from the 
@@ -1158,16 +1161,12 @@ load
         lda #mapapp
         sta memmap,y
 
-        ; copy to ofrcopy, then free the page
+        ; copy to ofrcopy (do NOT pgfree -- system
+        ; still owns this page; reclaimed on Go Home)
 
         lda frefpg
-        pha
         ldy #>ofrcopy
         jsr memcpy
-        pla
-        tay
-        ldx #1
-        jsr pgfree
 
         lda #0
         sta frefpg        ; signal loadf: skip copy+free
